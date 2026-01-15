@@ -6,18 +6,30 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Check, X, Eye, Clock, AlertCircle, CheckCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Check, X, Eye, Clock, AlertCircle, CheckCircle, FileText, DoorOpen, Package, Users, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminPanel: React.FC = () => {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
-  const { peminjaman, updateStatus } = usePeminjaman();
+  const { 
+    peminjaman, 
+    updateStatus, 
+    ruanganStatus, 
+    barangStatus, 
+    toggleRuanganAvailability, 
+    toggleBarangAvailability,
+    getQueueCount,
+    feedbacks
+  } = usePeminjaman();
   const { toast } = useToast();
   
   const [selectedPeminjaman, setSelectedPeminjaman] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('pending');
 
   // Redirect if not admin
   React.useEffect(() => {
@@ -28,7 +40,9 @@ const AdminPanel: React.FC = () => {
 
   const pendingItems = peminjaman.filter((p) => p.status === 'pending');
   const reviewItems = peminjaman.filter((p) => p.status === 'review');
-  const completedItems = peminjaman.filter((p) => p.status === 'accepted' || p.status === 'rejected');
+  const completedItems = peminjaman.filter((p) => 
+    p.status === 'accepted' || p.status === 'rejected' || p.status === 'completed' || p.status === 'cancelled'
+  );
 
   const handleUpdateStatus = (id: string, status: StatusPeminjaman) => {
     updateStatus(id, status);
@@ -164,8 +178,8 @@ const AdminPanel: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="pending" className="space-y-4">
-          <TabsList className="w-full grid grid-cols-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="w-full grid grid-cols-5">
             <TabsTrigger value="pending" className="relative">
               Pending
               {pendingItems.length > 0 && (
@@ -176,6 +190,8 @@ const AdminPanel: React.FC = () => {
             </TabsTrigger>
             <TabsTrigger value="review">Review</TabsTrigger>
             <TabsTrigger value="completed">Selesai</TabsTrigger>
+            <TabsTrigger value="manage">Kelola</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending" className="space-y-4">
@@ -227,6 +243,159 @@ const AdminPanel: React.FC = () => {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Manage Tab - Control Availability */}
+          <TabsContent value="manage" className="space-y-6">
+            {/* Ruangan Management */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DoorOpen className="h-5 w-5 text-primary" />
+                  Kelola Ketersediaan Ruangan
+                </CardTitle>
+                <CardDescription>
+                  Toggle untuk mengaktifkan/menonaktifkan ruangan
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {ruanganStatus.map((ruangan) => {
+                    const queueCount = getQueueCount(ruangan.id, 'ruangan');
+                    return (
+                      <div
+                        key={ruangan.id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border/50"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{ruangan.nama}</p>
+                            {queueCount > 0 && (
+                              <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">
+                                {queueCount} antrian
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {ruangan.kapasitas} orang • {ruangan.ukuran}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Label htmlFor={`ruangan-${ruangan.id}`} className="text-sm">
+                            {ruangan.adminBlocked ? 'Nonaktif' : 'Aktif'}
+                          </Label>
+                          <Switch
+                            id={`ruangan-${ruangan.id}`}
+                            checked={!ruangan.adminBlocked}
+                            onCheckedChange={() => {
+                              toggleRuanganAvailability(ruangan.id);
+                              toast({
+                                title: ruangan.adminBlocked ? 'Ruangan Diaktifkan' : 'Ruangan Dinonaktifkan',
+                                description: `${ruangan.nama} telah ${ruangan.adminBlocked ? 'diaktifkan' : 'dinonaktifkan'}.`,
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Barang Management */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-success" />
+                  Kelola Ketersediaan Barang
+                </CardTitle>
+                <CardDescription>
+                  Toggle untuk mengaktifkan/menonaktifkan barang
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {barangStatus.map((barang) => {
+                    const queueCount = getQueueCount(barang.id, 'barang');
+                    return (
+                      <div
+                        key={barang.id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border/50"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{barang.nama}</p>
+                            {queueCount > 0 && (
+                              <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">
+                                {queueCount} antrian
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Stok: {barang.stok} • {barang.kategori}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Label htmlFor={`barang-${barang.id}`} className="text-sm">
+                            {barang.adminBlocked ? 'Nonaktif' : 'Aktif'}
+                          </Label>
+                          <Switch
+                            id={`barang-${barang.id}`}
+                            checked={!barang.adminBlocked}
+                            onCheckedChange={() => {
+                              toggleBarangAvailability(barang.id);
+                              toast({
+                                title: barang.adminBlocked ? 'Barang Diaktifkan' : 'Barang Dinonaktifkan',
+                                description: `${barang.nama} telah ${barang.adminBlocked ? 'diaktifkan' : 'dinonaktifkan'}.`,
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Feedback Tab */}
+          <TabsContent value="feedback" className="space-y-4">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                  Kritik dan Saran
+                </CardTitle>
+                <CardDescription>
+                  Feedback dari pengguna sistem peminjaman
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {feedbacks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
+                    <p>Belum ada feedback</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {feedbacks.slice().reverse().map((fb) => (
+                      <div key={fb.id} className="p-4 rounded-lg bg-muted/50 border border-border/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium">{fb.nama}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(fb.createdAt).toLocaleDateString('id-ID')}
+                          </p>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{fb.kritikSaran}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -300,6 +469,12 @@ const AdminPanel: React.FC = () => {
                       {new Date(selectedPeminjaman.tanggalSelesai).toLocaleString('id-ID')}
                     </p>
                   </div>
+                  {selectedPeminjaman.kritikSaran && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Kritik & Saran</p>
+                      <p className="font-medium">{selectedPeminjaman.kritikSaran}</p>
+                    </div>
+                  )}
                 </div>
 
                 {(selectedPeminjaman.status === 'pending' || selectedPeminjaman.status === 'review') && (

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { usePeminjaman } from '@/context/PeminjamanContext';
-import ruanganData from '@/data/ruangan.json';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Users, MapPin, Wifi, Monitor, Volume2, Check } from 'lucide-react';
+import { ArrowLeft, Users, MapPin, Wifi, Monitor, Volume2, Check, Clock, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Ruangan {
@@ -18,8 +17,8 @@ interface Ruangan {
   nama: string;
   kapasitas: number;
   ukuran: string;
-  tersedia: boolean;
   fasilitas: string[];
+  adminBlocked?: boolean;
 }
 
 const fasilitasIcons: Record<string, React.ReactNode> = {
@@ -34,7 +33,13 @@ const fasilitasIcons: Record<string, React.ReactNode> = {
 const Ruangan: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addPeminjaman } = usePeminjaman();
+  const { 
+    addPeminjaman, 
+    ruanganStatus, 
+    isRuanganAvailable, 
+    getQueueCount, 
+    getEstimatedWaitTime 
+  } = usePeminjaman();
   const { toast } = useToast();
   
   const [selectedRuangan, setSelectedRuangan] = useState<Ruangan | null>(null);
@@ -49,17 +54,36 @@ const Ruangan: React.FC = () => {
     tanggalMulai: '',
     tanggalSelesai: '',
     fotoKTM: '',
+    kritikSaran: '',
   });
 
-  const filteredRuangan = filterUkuran === 'all'
-    ? ruanganData
-    : ruanganData.filter((r) => r.ukuran === filterUkuran);
+  const filteredRuangan = useMemo(() => {
+    return filterUkuran === 'all'
+      ? ruanganStatus
+      : ruanganStatus.filter((r) => r.ukuran === filterUkuran);
+  }, [ruanganStatus, filterUkuran]);
 
   const handleRuanganClick = (ruangan: Ruangan) => {
-    if (ruangan.tersedia) {
+    const available = isRuanganAvailable(ruangan.id);
+    if (available && !ruangan.adminBlocked) {
       setSelectedRuangan(ruangan);
       setIsDialogOpen(true);
     }
+  };
+
+  const calculateEstimatedEnd = () => {
+    if (formData.tanggalSelesai) {
+      const endDate = new Date(formData.tanggalSelesai);
+      return endDate.toLocaleString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+    return null;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -71,7 +95,14 @@ const Ruangan: React.FC = () => {
       tipe: 'ruangan',
       itemId: selectedRuangan.id,
       itemNama: selectedRuangan.nama,
-      ...formData,
+      keperluan: formData.keperluan,
+      penanggungJawab: formData.penanggungJawab,
+      alasan: formData.alasan,
+      durasi: formData.durasi,
+      tanggalMulai: formData.tanggalMulai,
+      tanggalSelesai: formData.tanggalSelesai,
+      fotoKTM: formData.fotoKTM,
+      kritikSaran: formData.kritikSaran,
     });
 
     toast({
@@ -88,6 +119,7 @@ const Ruangan: React.FC = () => {
       tanggalMulai: '',
       tanggalSelesai: '',
       fotoKTM: '',
+      kritikSaran: '',
     });
     navigate('/dashboard');
   };
@@ -143,53 +175,76 @@ const Ruangan: React.FC = () => {
 
         {/* Room Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRuangan.map((ruangan, index) => (
-            <Card
-              key={ruangan.id}
-              className={`glass-card transition-all duration-300 animate-slide-up ${
-                ruangan.tersedia
-                  ? 'cursor-pointer hover:shadow-card-hover hover:-translate-y-1'
-                  : 'opacity-60'
-              }`}
-              style={{ animationDelay: `${index * 0.05}s` }}
-              onClick={() => handleRuanganClick(ruangan)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg font-display">{ruangan.nama}</CardTitle>
-                    <CardDescription className="flex items-center gap-1 mt-1">
-                      <MapPin className="h-3 w-3" />
-                      Gedung A
-                    </CardDescription>
+          {filteredRuangan.map((ruangan, index) => {
+            const available = isRuanganAvailable(ruangan.id);
+            const queueCount = getQueueCount(ruangan.id, 'ruangan');
+            const estimatedWait = getEstimatedWaitTime(ruangan.id, 'ruangan');
+            
+            return (
+              <Card
+                key={ruangan.id}
+                className={`glass-card transition-all duration-300 animate-slide-up ${
+                  available && !ruangan.adminBlocked
+                    ? 'cursor-pointer hover:shadow-card-hover hover:-translate-y-1'
+                    : 'opacity-60'
+                }`}
+                style={{ animationDelay: `${index * 0.05}s` }}
+                onClick={() => handleRuanganClick(ruangan)}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg font-display">{ruangan.nama}</CardTitle>
+                      <CardDescription className="flex items-center gap-1 mt-1">
+                        <MapPin className="h-3 w-3" />
+                        Gedung A
+                      </CardDescription>
+                    </div>
+                    <StatusBadge status={available && !ruangan.adminBlocked ? 'available' : 'unavailable'} />
                   </div>
-                  <StatusBadge status={ruangan.tersedia ? 'available' : 'unavailable'} />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>{ruangan.kapasitas} orang</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getUkuranColor(ruangan.ukuran)}`}>
-                    {ruangan.ukuran}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ruangan.fasilitas.map((f) => (
-                    <span
-                      key={f}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground"
-                    >
-                      {fasilitasIcons[f] || <Check className="h-3 w-3" />}
-                      {f}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span>{ruangan.kapasitas} orang</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getUkuranColor(ruangan.ukuran)}`}>
+                      {ruangan.ukuran}
                     </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </div>
+                  
+                  {/* Queue Info */}
+                  {queueCount > 0 && (
+                    <div className="flex items-center gap-2 text-xs text-warning bg-warning/10 px-2 py-1.5 rounded-md">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>{queueCount} booking aktif</span>
+                    </div>
+                  )}
+                  
+                  {/* Estimated Wait Time */}
+                  {estimatedWait && !available && (
+                    <div className="flex items-center gap-2 text-xs text-info bg-info/10 px-2 py-1.5 rounded-md">
+                      <Clock className="h-3 w-3" />
+                      <span>Tersedia dalam: {estimatedWait}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex flex-wrap gap-1.5">
+                    {ruangan.fasilitas.map((f) => (
+                      <span
+                        key={f}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-xs text-muted-foreground"
+                      >
+                        {fasilitasIcons[f] || <Check className="h-3 w-3" />}
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Booking Dialog */}
@@ -279,6 +334,17 @@ const Ruangan: React.FC = () => {
                 </div>
               </div>
 
+              {/* Estimated End Time */}
+              {formData.tanggalSelesai && (
+                <div className="bg-info/10 border border-info/20 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-info">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-sm font-medium">Estimasi Waktu Selesai</span>
+                  </div>
+                  <p className="text-sm text-foreground mt-1">{calculateEstimatedEnd()}</p>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="durasi">Durasi Peminjaman</Label>
                 <Input
@@ -287,6 +353,18 @@ const Ruangan: React.FC = () => {
                   value={formData.durasi}
                   onChange={(e) => setFormData({ ...formData, durasi: e.target.value })}
                   required
+                />
+              </div>
+
+              {/* Kritik dan Saran */}
+              <div className="space-y-2">
+                <Label htmlFor="kritikSaran">Kritik dan Saran (Opsional)</Label>
+                <Textarea
+                  id="kritikSaran"
+                  placeholder="Berikan kritik dan saran untuk layanan BAU..."
+                  value={formData.kritikSaran}
+                  onChange={(e) => setFormData({ ...formData, kritikSaran: e.target.value })}
+                  rows={2}
                 />
               </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { usePeminjaman } from '@/context/PeminjamanContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -13,38 +14,25 @@ interface Message {
   timestamp: Date;
 }
 
-const predefinedResponses: Record<string, string> = {
-  'halo': 'Halo! 👋 Saya asisten virtual BAU. Ada yang bisa saya bantu mengenai peminjaman ruangan atau barang?',
-  'hi': 'Hi! 👋 Saya asisten virtual BAU. Ada yang bisa saya bantu mengenai peminjaman ruangan atau barang?',
-  'hai': 'Hai! 👋 Saya asisten virtual BAU. Ada yang bisa saya bantu mengenai peminjaman ruangan atau barang?',
-  'ruangan': 'Untuk meminjam ruangan, silakan:\n1. Klik menu "Pinjam Ruangan" di Dashboard\n2. Pilih ruangan yang tersedia (berwarna hijau)\n3. Isi formulir peminjaman dengan lengkap\n4. Tunggu persetujuan dari admin\n\nApakah ada pertanyaan lain?',
-  'barang': 'Untuk meminjam barang, silakan:\n1. Klik menu "Pinjam Barang" di Dashboard\n2. Pilih barang yang tersedia\n3. Tentukan jumlah yang dibutuhkan\n4. Isi formulir peminjaman\n5. Tunggu persetujuan admin\n\nAda yang bisa saya bantu lagi?',
-  'status': 'Status peminjaman Anda dapat dilihat di halaman Dashboard. Status terdiri dari:\n🟡 Pending - Menunggu review\n🔵 Review - Sedang ditinjau admin\n🟢 Accepted - Disetujui\n🔴 Rejected - Ditolak\n\nAda pertanyaan lain?',
-  'jam': 'Layanan peminjaman BAU buka:\n📅 Senin - Jumat: 08.00 - 16.00 WIB\n📅 Sabtu: 08.00 - 12.00 WIB\n📅 Minggu & Hari Libur: Tutup\n\nAda yang bisa saya bantu lagi?',
-  'kontak': 'Untuk informasi lebih lanjut, hubungi:\n📞 Telepon: (021) 123-4567\n📧 Email: bau@kampus.ac.id\n📍 Lokasi: Gedung A Lantai 1\n\nAda pertanyaan lain?',
-  'admin': 'Untuk menghubungi admin BAU:\n1. Gunakan chat ini untuk pertanyaan umum\n2. Datang langsung ke kantor BAU di Gedung A Lt. 1\n3. Telepon ke (021) 123-4567\n\nAda yang bisa saya bantu?',
-};
-
-const getResponse = (message: string): string => {
-  const lowerMessage = message.toLowerCase();
-  
-  for (const [key, response] of Object.entries(predefinedResponses)) {
-    if (lowerMessage.includes(key)) {
-      return response;
-    }
-  }
-  
-  return 'Terima kasih atas pertanyaannya! 😊 Untuk informasi lebih lanjut mengenai peminjaman ruangan atau barang, silakan tanyakan tentang:\n\n• Cara pinjam "ruangan"\n• Cara pinjam "barang"\n• Cek "status" peminjaman\n• "Jam" operasional\n• "Kontak" admin\n\nAtau ketik pertanyaan Anda secara spesifik.';
-};
-
 const Chat: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { 
+    ruanganStatus, 
+    barangStatus, 
+    isRuanganAvailable, 
+    isBarangAvailable,
+    getQueueCount,
+    getEstimatedWaitTime,
+    getRuanganRecommendation,
+    peminjaman
+  } = usePeminjaman();
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: `Halo ${user?.nama}! 👋\n\nSaya asisten virtual BAU. Saya siap membantu Anda dengan pertanyaan seputar peminjaman ruangan dan barang.\n\nApa yang bisa saya bantu hari ini?`,
+      content: `Halo ${user?.nama}! 👋\n\nSaya asisten virtual BAU. Saya siap membantu Anda dengan pertanyaan seputar peminjaman ruangan dan barang.\n\nAnda bisa bertanya tentang:\n• Ketersediaan ruangan\n• Rekomendasi ruangan\n• Status barang\n• Cara peminjaman\n\nApa yang bisa saya bantu hari ini?`,
       timestamp: new Date(),
     },
   ]);
@@ -59,6 +47,158 @@ const Chat: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const getSmartResponse = (message: string): string => {
+    const lowerMessage = message.toLowerCase();
+    
+    // Check for room availability queries
+    const ruanganMatch = lowerMessage.match(/(?:ruang(?:an)?|room)\s*([a-z]?\d+)/i);
+    if (ruanganMatch || lowerMessage.includes('tersedia') || lowerMessage.includes('available')) {
+      if (ruanganMatch) {
+        const ruanganId = ruanganMatch[1].toUpperCase();
+        const ruangan = ruanganStatus.find(r => r.id === ruanganId || r.id === `A${ruanganId.replace(/^A/i, '')}`);
+        
+        if (ruangan) {
+          const available = isRuanganAvailable(ruangan.id);
+          const queue = getQueueCount(ruangan.id, 'ruangan');
+          const waitTime = getEstimatedWaitTime(ruangan.id, 'ruangan');
+          
+          if (ruangan.adminBlocked) {
+            return `❌ **${ruangan.nama}** sedang dinonaktifkan oleh admin.\n\nSilakan pilih ruangan lain atau hubungi admin untuk informasi lebih lanjut.`;
+          }
+          
+          if (available) {
+            return `✅ **${ruangan.nama}** tersedia untuk dipinjam!\n\n📍 Kapasitas: ${ruangan.kapasitas} orang\n📐 Ukuran: ${ruangan.ukuran}\n🛠 Fasilitas: ${ruangan.fasilitas.join(', ')}\n\nSilakan klik menu "Pinjam Ruangan" di Dashboard untuk mengajukan peminjaman.`;
+          } else {
+            let response = `⏳ **${ruangan.nama}** sedang digunakan.\n\n`;
+            if (queue > 0) {
+              response += `📊 Antrian saat ini: ${queue} booking\n`;
+            }
+            if (waitTime) {
+              response += `⏰ Estimasi tersedia: ${waitTime}\n`;
+            }
+            response += `\nAnda tetap bisa mengajukan peminjaman untuk waktu yang berbeda.`;
+            return response;
+          }
+        } else {
+          return `Maaf, saya tidak menemukan ruangan dengan ID tersebut. Ruangan yang tersedia: A01 - A10.`;
+        }
+      }
+      
+      // General availability check
+      const availableRooms = ruanganStatus.filter(r => isRuanganAvailable(r.id) && !r.adminBlocked);
+      const unavailableRooms = ruanganStatus.filter(r => !isRuanganAvailable(r.id) || r.adminBlocked);
+      
+      let response = `📊 **Status Ketersediaan Ruangan:**\n\n`;
+      response += `✅ **Tersedia (${availableRooms.length}):**\n`;
+      availableRooms.forEach(r => {
+        response += `• ${r.nama} (${r.kapasitas} orang, ${r.ukuran})\n`;
+      });
+      
+      if (unavailableRooms.length > 0) {
+        response += `\n❌ **Tidak Tersedia (${unavailableRooms.length}):**\n`;
+        unavailableRooms.forEach(r => {
+          const waitTime = getEstimatedWaitTime(r.id, 'ruangan');
+          response += `• ${r.nama}${waitTime ? ` - tersedia dalam ${waitTime}` : r.adminBlocked ? ' (dinonaktifkan)' : ''}\n`;
+        });
+      }
+      
+      return response;
+    }
+    
+    // Room recommendation
+    if (lowerMessage.includes('rekomendasi') || lowerMessage.includes('recommend') || lowerMessage.includes('saran')) {
+      // Check for capacity mentions
+      const capacityMatch = lowerMessage.match(/(\d+)\s*(?:orang|people|peserta)/);
+      const capacity = capacityMatch ? parseInt(capacityMatch[1]) : 10;
+      
+      // Check for facility requirements
+      const facilities: string[] = [];
+      if (lowerMessage.includes('proyektor') || lowerMessage.includes('projector')) facilities.push('Proyektor');
+      if (lowerMessage.includes('sound') || lowerMessage.includes('speaker')) facilities.push('Sound System');
+      if (lowerMessage.includes('ac')) facilities.push('AC');
+      if (lowerMessage.includes('mic') || lowerMessage.includes('microphone')) facilities.push('Mic');
+      if (lowerMessage.includes('video conference')) facilities.push('Video Conference');
+      
+      const recommendations = getRuanganRecommendation(capacity, facilities.length > 0 ? facilities : undefined);
+      
+      if (recommendations.length === 0) {
+        return `Maaf, tidak ada ruangan yang tersedia sesuai kriteria Anda saat ini.\n\nCoba:\n• Kurangi jumlah kapasitas yang dibutuhkan\n• Cek kembali nanti karena mungkin ada ruangan yang akan tersedia`;
+      }
+      
+      let response = `🎯 **Rekomendasi Ruangan untuk ${capacity} orang:**\n\n`;
+      recommendations.slice(0, 3).forEach((r, i) => {
+        response += `${i + 1}. **${r.nama}**\n`;
+        response += `   📍 Kapasitas: ${r.kapasitas} orang\n`;
+        response += `   📐 Ukuran: ${r.ukuran}\n`;
+        response += `   🛠 Fasilitas: ${r.fasilitas.join(', ')}\n\n`;
+      });
+      
+      response += `Silakan pilih salah satu dan ajukan peminjaman melalui menu "Pinjam Ruangan".`;
+      return response;
+    }
+    
+    // Check barang availability
+    if (lowerMessage.includes('barang') || lowerMessage.includes('alat') || lowerMessage.includes('peralatan')) {
+      const availableBarang = barangStatus.filter(b => isBarangAvailable(b.id) && !b.adminBlocked);
+      const unavailableBarang = barangStatus.filter(b => !isBarangAvailable(b.id) || b.adminBlocked);
+      
+      let response = `📦 **Status Ketersediaan Barang:**\n\n`;
+      response += `✅ **Tersedia (${availableBarang.length}):**\n`;
+      availableBarang.forEach(b => {
+        response += `• ${b.nama} (Stok: ${b.stok})\n`;
+      });
+      
+      if (unavailableBarang.length > 0) {
+        response += `\n❌ **Tidak Tersedia (${unavailableBarang.length}):**\n`;
+        unavailableBarang.forEach(b => {
+          response += `• ${b.nama}\n`;
+        });
+      }
+      
+      return response;
+    }
+    
+    // Queue/antrian info
+    if (lowerMessage.includes('antrian') || lowerMessage.includes('queue') || lowerMessage.includes('booking')) {
+      let response = `📊 **Status Antrian Peminjaman:**\n\n`;
+      
+      const roomsWithQueue = ruanganStatus.filter(r => getQueueCount(r.id, 'ruangan') > 0);
+      if (roomsWithQueue.length > 0) {
+        response += `**Ruangan:**\n`;
+        roomsWithQueue.forEach(r => {
+          const queue = getQueueCount(r.id, 'ruangan');
+          const waitTime = getEstimatedWaitTime(r.id, 'ruangan');
+          response += `• ${r.nama}: ${queue} booking${waitTime ? ` (tersedia dalam ${waitTime})` : ''}\n`;
+        });
+      } else {
+        response += `Tidak ada antrian untuk ruangan saat ini.\n`;
+      }
+      
+      return response;
+    }
+    
+    // Predefined responses
+    const predefinedResponses: Record<string, string> = {
+      'halo': 'Halo! 👋 Saya asisten virtual BAU. Ada yang bisa saya bantu mengenai peminjaman ruangan atau barang?',
+      'hi': 'Hi! 👋 Saya asisten virtual BAU. Ada yang bisa saya bantu mengenai peminjaman ruangan atau barang?',
+      'hai': 'Hai! 👋 Saya asisten virtual BAU. Ada yang bisa saya bantu mengenai peminjaman ruangan atau barang?',
+      'cara': 'Untuk meminjam ruangan/barang:\n1. Klik menu "Pinjam Ruangan" atau "Pinjam Barang" di Dashboard\n2. Pilih item yang tersedia (berwarna hijau)\n3. Isi formulir peminjaman dengan lengkap\n4. Tunggu persetujuan dari admin\n\nApakah ada pertanyaan lain?',
+      'status': 'Status peminjaman Anda dapat dilihat di halaman Dashboard. Status terdiri dari:\n🟡 Pending - Menunggu review\n🔵 Review - Sedang ditinjau admin\n🟢 Accepted - Disetujui\n🔴 Rejected - Ditolak\n⚪ Cancelled - Dibatalkan\n\nAnda juga bisa membatalkan peminjaman yang masih pending atau review.',
+      'jam': 'Layanan peminjaman BAU buka:\n📅 Senin - Jumat: 08.00 - 16.00 WIB\n📅 Sabtu: 08.00 - 12.00 WIB\n📅 Minggu & Hari Libur: Tutup\n\nAda yang bisa saya bantu lagi?',
+      'kontak': 'Untuk informasi lebih lanjut, hubungi:\n📞 Telepon: (021) 123-4567\n📧 Email: bau@kampus.ac.id\n📍 Lokasi: Gedung A Lantai 1\n\nAda pertanyaan lain?',
+      'batal': 'Untuk membatalkan peminjaman:\n1. Buka Dashboard\n2. Lihat status peminjaman Anda\n3. Klik tombol ❌ pada peminjaman yang ingin dibatalkan\n\nCatatan: Hanya peminjaman dengan status Pending atau Review yang bisa dibatalkan.',
+      'cancel': 'Untuk membatalkan peminjaman:\n1. Buka Dashboard\n2. Lihat status peminjaman Anda\n3. Klik tombol ❌ pada peminjaman yang ingin dibatalkan\n\nCatatan: Hanya peminjaman dengan status Pending atau Review yang bisa dibatalkan.',
+    };
+    
+    for (const [key, response] of Object.entries(predefinedResponses)) {
+      if (lowerMessage.includes(key)) {
+        return response;
+      }
+    }
+    
+    return 'Terima kasih atas pertanyaannya! 😊\n\nSaya bisa membantu Anda dengan:\n\n• **Cek ketersediaan**: "Apakah ruang A01 tersedia?"\n• **Rekomendasi**: "Rekomendasikan ruangan untuk 20 orang"\n• **Status barang**: "Apa saja barang yang tersedia?"\n• **Antrian**: "Berapa antrian ruangan?"\n• **Cara peminjaman**: "Bagaimana cara meminjam?"\n• **Pembatalan**: "Bagaimana cara membatalkan?"\n\nSilakan tanyakan sesuai kebutuhan Anda!';
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -77,7 +217,7 @@ const Chat: React.FC = () => {
     // Simulate typing delay
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const response = getResponse(input);
+    const response = getSmartResponse(input);
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
