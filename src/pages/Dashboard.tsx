@@ -5,20 +5,57 @@ import { usePeminjaman } from '@/context/PeminjamanContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/StatusBadge';
-import { DoorOpen, Package, LogOut, Shield, MessageCircle, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { DoorOpen, Package, LogOut, Shield, MessageCircle, Clock, CheckCircle, AlertCircle, X, Calendar } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard: React.FC = () => {
   const { user, logout, isAdmin } = useAuth();
-  const { getPeminjamanByNim, peminjaman } = usePeminjaman();
+  const { getPeminjamanByNim, peminjaman, cancelPeminjaman, getEstimatedWaitTime } = usePeminjaman();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const userPeminjaman = user ? getPeminjamanByNim(user.nim) : [];
+  const activePeminjaman = userPeminjaman.filter(
+    (p) => p.status !== 'cancelled' && p.status !== 'completed' && p.status !== 'rejected'
+  );
   const pendingCount = peminjaman.filter((p) => p.status === 'pending').length;
   const reviewCount = peminjaman.filter((p) => p.status === 'review').length;
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleCancel = (id: string, itemNama: string) => {
+    cancelPeminjaman(id);
+    toast({
+      title: 'Peminjaman Dibatalkan',
+      description: `Peminjaman ${itemNama} telah dibatalkan.`,
+    });
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Clock className="h-4 w-4 text-warning" />;
+      case 'review':
+        return <AlertCircle className="h-4 w-4 text-info" />;
+      case 'accepted':
+        return <CheckCircle className="h-4 w-4 text-success" />;
+      default:
+        return null;
+    }
+  };
+
+  const formatEndDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -144,7 +181,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Status Peminjaman */}
-        {userPeminjaman.length > 0 && (
+        {activePeminjaman.length > 0 && (
           <Card className="glass-card animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -154,25 +191,48 @@ const Dashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {userPeminjaman.slice(-5).reverse().map((p) => (
+                {activePeminjaman.slice(-5).reverse().map((p) => (
                   <div
                     key={p.id}
                     className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border/50"
                   >
-                    <div>
-                      <p className="font-medium text-foreground">{p.itemNama}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {getStatusIcon(p.status)}
+                        <p className="font-medium text-foreground">{p.itemNama}</p>
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {p.tipe === 'ruangan' ? '🚪 Ruangan' : '📦 Barang'} • {p.keperluan}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(p.createdAt).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(p.createdAt).toLocaleDateString('id-ID')}
+                        </span>
+                        {p.tanggalSelesai && (
+                          <span className="flex items-center gap-1 text-info">
+                            <Clock className="h-3 w-3" />
+                            Selesai: {formatEndDate(p.tanggalSelesai)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <StatusBadge status={p.status} />
+                    <div className="flex items-center gap-3">
+                      <StatusBadge status={p.status as any} />
+                      {(p.status === 'pending' || p.status === 'review') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCancel(p.id, p.itemNama);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
