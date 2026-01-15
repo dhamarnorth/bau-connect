@@ -1,0 +1,57 @@
+[
+  {
+    "nim": "20241337001",
+    "nama": "Ahmad Fauzan",
+    "jurusan": "Teknik Informatika",
+    "semester": 3
+  },
+  {
+    "nim": "20241337002",
+    "nama": "Siti Nurhaliza",
+    "jurusan": "Sistem Informasi",
+    "semester": 5
+  },
+  {
+    "nim": "20241337003",
+    "nama": "Budi Santoso",
+    "jurusan": "Teknik Informatika",
+    "semester": 7
+  },
+  {
+    "nim": "20241337004",
+    "nama": "Dewi Lestari",
+    "jurusan": "Manajemen Informatika",
+    "semester": 3
+  },
+  {
+    "nim": "20241337005",
+    "nama": "Rizky Pratama",
+    "jurusan": "Teknik Informatika",
+    "semester": 5
+  },
+  {
+    "nim": "20241337006",
+    "nama": "Anisa Putri",
+    "jurusan": "Sistem Informasi",
+    "semester": 3
+  },
+  {
+    "nim": "20241337007",
+    "nama": "Fajar Nugroho",
+    "jurusan": "Teknik Komputer",
+    "semester": 5
+  },
+  {
+    "nim": "20241337008",
+    "nama": "Maya Sari",
+    "jurusan": "Teknik Informatika",
+    "semester": 7
+  },
+  {
+    "nim": "admin",
+    "nama": "Administrator BAU",
+    "jurusan": "Admin",
+    "semester": 0,
+    "isAdmin": true
+  }
+]

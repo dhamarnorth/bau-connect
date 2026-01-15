@@ -1,0 +1,72 @@
+[
+  {
+    "id": "B001",
+    "nama": "Proyektor Epson",
+    "jumlah": 5,
+    "tersedia": 3,
+    "kategori": "Elektronik"
+  },
+  {
+    "id": "B002",
+    "nama": "Laptop ASUS",
+    "jumlah": 10,
+    "tersedia": 7,
+    "kategori": "Elektronik"
+  },
+  {
+    "id": "B003",
+    "nama": "Mic Wireless",
+    "jumlah": 8,
+    "tersedia": 5,
+    "kategori": "Audio"
+  },
+  {
+    "id": "B004",
+    "nama": "Speaker Portable",
+    "jumlah": 4,
+    "tersedia": 2,
+    "kategori": "Audio"
+  },
+  {
+    "id": "B005",
+    "nama": "Kabel HDMI 5m",
+    "jumlah": 15,
+    "tersedia": 12,
+    "kategori": "Aksesoris"
+  },
+  {
+    "id": "B006",
+    "nama": "Extension Cord",
+    "jumlah": 10,
+    "tersedia": 8,
+    "kategori": "Aksesoris"
+  },
+  {
+    "id": "B007",
+    "nama": "Webcam Logitech",
+    "jumlah": 6,
+    "tersedia": 0,
+    "kategori": "Elektronik"
+  },
+  {
+    "id": "B008",
+    "nama": "Tripod Kamera",
+    "jumlah": 4,
+    "tersedia": 3,
+    "kategori": "Aksesoris"
+  },
+  {
+    "id": "B009",
+    "nama": "Pointer Laser",
+    "jumlah": 8,
+    "tersedia": 6,
+    "kategori": "Aksesoris"
+  },
+  {
+    "id": "B010",
+    "nama": "Whiteboard Portable",
+    "jumlah": 3,
+    "tersedia": 1,
+    "kategori": "Peralatan"
+  }
+]

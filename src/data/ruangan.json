@@ -1,0 +1,82 @@
+[
+  {
+    "id": "A01",
+    "nama": "Ruang A01",
+    "kapasitas": 10,
+    "ukuran": "Kecil",
+    "tersedia": true,
+    "fasilitas": ["AC", "Proyektor", "Whiteboard"]
+  },
+  {
+    "id": "A02",
+    "nama": "Ruang A02",
+    "kapasitas": 8,
+    "ukuran": "Kecil",
+    "tersedia": true,
+    "fasilitas": ["AC", "Whiteboard"]
+  },
+  {
+    "id": "A03",
+    "nama": "Ruang A03",
+    "kapasitas": 25,
+    "ukuran": "Menengah",
+    "tersedia": false,
+    "fasilitas": ["AC", "Proyektor", "Sound System", "Whiteboard"]
+  },
+  {
+    "id": "A04",
+    "nama": "Ruang A04",
+    "kapasitas": 20,
+    "ukuran": "Menengah",
+    "tersedia": true,
+    "fasilitas": ["AC", "Proyektor", "Whiteboard"]
+  },
+  {
+    "id": "A05",
+    "nama": "Ruang A05",
+    "kapasitas": 50,
+    "ukuran": "Besar",
+    "tersedia": true,
+    "fasilitas": ["AC", "Proyektor", "Sound System", "Mic", "Whiteboard"]
+  },
+  {
+    "id": "A06",
+    "nama": "Ruang A06",
+    "kapasitas": 15,
+    "ukuran": "Menengah",
+    "tersedia": false,
+    "fasilitas": ["AC", "Proyektor"]
+  },
+  {
+    "id": "A07",
+    "nama": "Ruang A07",
+    "kapasitas": 5,
+    "ukuran": "Kecil",
+    "tersedia": true,
+    "fasilitas": ["AC", "Whiteboard"]
+  },
+  {
+    "id": "A08",
+    "nama": "Ruang A08",
+    "kapasitas": 40,
+    "ukuran": "Besar",
+    "tersedia": true,
+    "fasilitas": ["AC", "Proyektor", "Sound System", "Whiteboard"]
+  },
+  {
+    "id": "A09",
+    "nama": "Ruang A09",
+    "kapasitas": 30,
+    "ukuran": "Menengah",
+    "tersedia": true,
+    "fasilitas": ["AC", "Proyektor", "Whiteboard"]
+  },
+  {
+    "id": "A10",
+    "nama": "Ruang A10",
+    "kapasitas": 60,
+    "ukuran": "Besar",
+    "tersedia": false,
+    "fasilitas": ["AC", "Proyektor", "Sound System", "Mic", "Whiteboard", "Video Conference"]
+  }
+]
