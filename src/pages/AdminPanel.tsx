@@ -86,15 +86,27 @@ const AdminPanel: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => viewDetail(item)} className="flex-1">
+          <Button 
+            type="button"
+            variant="outline" 
+            size="sm" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              viewDetail(item);
+            }} 
+            className="flex-1"
+          >
             <Eye className="h-4 w-4 mr-1" />
             Detail
           </Button>
           {item.status === 'pending' && (
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 handleUpdateStatus(item.id, 'review');
               }}
@@ -107,9 +119,11 @@ const AdminPanel: React.FC = () => {
           {(item.status === 'pending' || item.status === 'review') && (
             <>
               <Button
+                type="button"
                 variant="success"
                 size="sm"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   handleUpdateStatus(item.id, 'accepted');
                 }}
@@ -117,9 +131,11 @@ const AdminPanel: React.FC = () => {
                 <Check className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="destructive"
                 size="sm"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   handleUpdateStatus(item.id, 'rejected');
                 }}
