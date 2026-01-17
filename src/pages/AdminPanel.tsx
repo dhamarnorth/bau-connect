@@ -262,10 +262,13 @@ const AdminPanel: React.FC = () => {
                 <div className="grid sm:grid-cols-2 gap-4">
                   {ruanganStatus.map((ruangan) => {
                     const queueCount = getQueueCount(ruangan.id, 'ruangan');
+                    const hasActiveBooking = queueCount > 0;
                     return (
                       <div
                         key={ruangan.id}
-                        className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border/50"
+                        className={`flex items-center justify-between p-4 rounded-lg border ${
+                          ruangan.adminBlocked ? 'bg-destructive/10 border-destructive/30' : 'bg-muted/50 border-border/50'
+                        }`}
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -281,7 +284,23 @@ const AdminPanel: React.FC = () => {
                             {ruangan.kapasitas} orang • {ruangan.ukuran}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          {hasActiveBooking && ruangan.adminBlocked && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs border-success text-success hover:bg-success hover:text-success-foreground"
+                              onClick={() => {
+                                toggleRuanganAvailability(ruangan.id);
+                                toast({
+                                  title: 'Ruangan Diaktifkan Kembali',
+                                  description: `${ruangan.nama} telah diaktifkan (booking sebelumnya selesai lebih cepat).`,
+                                });
+                              }}
+                            >
+                              Buka Kembali
+                            </Button>
+                          )}
                           <Label htmlFor={`ruangan-${ruangan.id}`} className="text-sm">
                             {ruangan.adminBlocked ? 'Nonaktif' : 'Aktif'}
                           </Label>
