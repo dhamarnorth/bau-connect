@@ -91,31 +91,38 @@ const AdminPanel: React.FC = () => {
             Detail
           </Button>
           {item.status === 'pending' && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleUpdateStatus(item.id, 'review')}
-                className="flex-1 border-info text-info hover:bg-info hover:text-info-foreground"
-              >
-                <AlertCircle className="h-4 w-4 mr-1" />
-                Review
-              </Button>
-            </>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUpdateStatus(item.id, 'review');
+              }}
+              className="flex-1 border-info text-info hover:bg-info hover:text-info-foreground"
+            >
+              <AlertCircle className="h-4 w-4 mr-1" />
+              Review
+            </Button>
           )}
           {(item.status === 'pending' || item.status === 'review') && (
             <>
               <Button
                 variant="success"
                 size="sm"
-                onClick={() => handleUpdateStatus(item.id, 'accepted')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUpdateStatus(item.id, 'accepted');
+                }}
               >
                 <Check className="h-4 w-4" />
               </Button>
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => handleUpdateStatus(item.id, 'rejected')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUpdateStatus(item.id, 'rejected');
+                }}
               >
                 <X className="h-4 w-4" />
               </Button>
