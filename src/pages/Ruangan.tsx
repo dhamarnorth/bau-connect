@@ -8,9 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { StatusBadge } from '@/components/StatusBadge';
-import { ArrowLeft, Users, MapPin, Wifi, Monitor, Volume2, Check, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Users, MapPin, Wifi, Monitor, Volume2, Check, Clock, AlertTriangle, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface Ruangan {
   id: string;
@@ -51,10 +56,15 @@ const Ruangan: React.FC = () => {
     penanggungJawab: '',
     alasan: '',
     durasi: '',
-    tanggalMulai: '',
-    tanggalSelesai: '',
     fotoKTM: '',
   });
+  
+  const [tanggalMulai, setTanggalMulai] = useState<Date | undefined>();
+  const [tanggalSelesai, setTanggalSelesai] = useState<Date | undefined>();
+  const [jamMulai, setJamMulai] = useState('08:00');
+  const [jamSelesai, setJamSelesai] = useState('10:00');
+  const [openMulai, setOpenMulai] = useState(false);
+  const [openSelesai, setOpenSelesai] = useState(false);
 
   const filteredRuangan = useMemo(() => {
     return filterUkuran === 'all'
@@ -71,8 +81,10 @@ const Ruangan: React.FC = () => {
   };
 
   const calculateEstimatedEnd = () => {
-    if (formData.tanggalSelesai) {
-      const endDate = new Date(formData.tanggalSelesai);
+    if (tanggalSelesai) {
+      const endDate = new Date(tanggalSelesai);
+      const [hours, minutes] = jamSelesai.split(':').map(Number);
+      endDate.setHours(hours, minutes);
       return endDate.toLocaleString('id-ID', {
         weekday: 'long',
         day: 'numeric',
@@ -84,10 +96,18 @@ const Ruangan: React.FC = () => {
     }
     return null;
   };
+  
+  const getFullDateTime = (date: Date | undefined, time: string) => {
+    if (!date) return '';
+    const [hours, minutes] = time.split(':').map(Number);
+    const fullDate = new Date(date);
+    fullDate.setHours(hours, minutes, 0, 0);
+    return fullDate.toISOString();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRuangan || !user) return;
+    if (!selectedRuangan || !user || !tanggalMulai || !tanggalSelesai) return;
 
     addPeminjaman({
       nim: user.nim,
@@ -98,8 +118,8 @@ const Ruangan: React.FC = () => {
       penanggungJawab: formData.penanggungJawab,
       alasan: formData.alasan,
       durasi: formData.durasi,
-      tanggalMulai: formData.tanggalMulai,
-      tanggalSelesai: formData.tanggalSelesai,
+      tanggalMulai: getFullDateTime(tanggalMulai, jamMulai),
+      tanggalSelesai: getFullDateTime(tanggalSelesai, jamSelesai),
       fotoKTM: formData.fotoKTM,
     });
 
@@ -114,10 +134,12 @@ const Ruangan: React.FC = () => {
       penanggungJawab: '',
       alasan: '',
       durasi: '',
-      tanggalMulai: '',
-      tanggalSelesai: '',
       fotoKTM: '',
     });
+    setTanggalMulai(undefined);
+    setTanggalSelesai(undefined);
+    setJamMulai('08:00');
+    setJamSelesai('10:00');
     navigate('/dashboard');
   };
 
@@ -310,55 +332,128 @@ const Ruangan: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="tanggalMulai">Tanggal Mulai</Label>
-                  <div className="relative">
-                    <Input
-                      id="tanggalMulai"
-                      type="datetime-local"
-                      value={formData.tanggalMulai}
-                      onChange={(e) => setFormData({ ...formData, tanggalMulai: e.target.value })}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-2 text-xs"
-                      onClick={() => {
-                        const now = new Date();
-                        const formatted = now.toISOString().slice(0, 16);
-                        setFormData({ ...formData, tanggalMulai: formatted });
-                      }}
-                    >
-                      Sekarang
-                    </Button>
-                  </div>
+                  <Label>Tanggal Mulai</Label>
+                  <Popover open={openMulai} onOpenChange={setOpenMulai}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !tanggalMulai && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {tanggalMulai ? format(tanggalMulai, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={tanggalMulai}
+                        onSelect={(date) => {
+                          setTanggalMulai(date);
+                          setOpenMulai(false);
+                        }}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                      <div className="flex gap-2 p-3 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setTanggalMulai(new Date());
+                            setOpenMulai(false);
+                          }}
+                        >
+                          Today
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setTanggalMulai(undefined);
+                            setOpenMulai(false);
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Input
+                    type="time"
+                    value={jamMulai}
+                    onChange={(e) => setJamMulai(e.target.value)}
+                    className="mt-2"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tanggalSelesai">Tanggal Selesai</Label>
-                  <div className="relative">
-                    <Input
-                      id="tanggalSelesai"
-                      type="datetime-local"
-                      value={formData.tanggalSelesai}
-                      onChange={(e) => setFormData({ ...formData, tanggalSelesai: e.target.value })}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-2 text-xs"
-                      onClick={() => setFormData({ ...formData, tanggalSelesai: '' })}
-                    >
-                      Hapus
-                    </Button>
-                  </div>
+                  <Label>Tanggal Selesai</Label>
+                  <Popover open={openSelesai} onOpenChange={setOpenSelesai}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !tanggalSelesai && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {tanggalSelesai ? format(tanggalSelesai, "PPP", { locale: id }) : <span>Pilih tanggal</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={tanggalSelesai}
+                        onSelect={(date) => {
+                          setTanggalSelesai(date);
+                          setOpenSelesai(false);
+                        }}
+                        disabled={(date) => tanggalMulai ? date < tanggalMulai : false}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                      <div className="flex gap-2 p-3 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setTanggalSelesai(new Date());
+                            setOpenSelesai(false);
+                          }}
+                        >
+                          Today
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => {
+                            setTanggalSelesai(undefined);
+                            setOpenSelesai(false);
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Input
+                    type="time"
+                    value={jamSelesai}
+                    onChange={(e) => setJamSelesai(e.target.value)}
+                    className="mt-2"
+                  />
                 </div>
               </div>
 
               {/* Estimated End Time */}
-              {formData.tanggalSelesai && (
+              {tanggalSelesai && (
                 <div className="bg-info/10 border border-info/20 rounded-lg p-3">
                   <div className="flex items-center gap-2 text-info">
                     <Clock className="h-4 w-4" />
