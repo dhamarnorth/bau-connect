@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-type Status = 'pending' | 'review' | 'accepted' | 'rejected' | 'available' | 'unavailable';
+type Status = 'pending' | 'review' | 'accepted' | 'rejected' | 'available' | 'unavailable' | 'cancelled' | 'completed';
 
 interface StatusBadgeProps {
   status: Status;
@@ -28,6 +28,16 @@ const statusConfig: Record<Status, { label: string; emoji: string; className: st
     label: 'Rejected',
     emoji: '🔴',
     className: 'bg-destructive/10 text-destructive border-destructive/20',
+  },
+  cancelled: {
+    label: 'Dibatalkan',
+    emoji: '⚫',
+    className: 'bg-muted text-muted-foreground border-muted',
+  },
+  completed: {
+    label: 'Selesai',
+    emoji: '✅',
+    className: 'bg-success/10 text-success border-success/20',
   },
   available: {
     label: 'Tersedia',
