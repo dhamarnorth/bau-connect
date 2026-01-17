@@ -54,7 +54,6 @@ const Ruangan: React.FC = () => {
     tanggalMulai: '',
     tanggalSelesai: '',
     fotoKTM: '',
-    kritikSaran: '',
   });
 
   const filteredRuangan = useMemo(() => {
@@ -64,8 +63,8 @@ const Ruangan: React.FC = () => {
   }, [ruanganStatus, filterUkuran]);
 
   const handleRuanganClick = (ruangan: Ruangan) => {
-    const available = isRuanganAvailable(ruangan.id);
-    if (available && !ruangan.adminBlocked) {
+    // Allow booking if not admin blocked (queue system allows booking even if occupied)
+    if (!ruangan.adminBlocked) {
       setSelectedRuangan(ruangan);
       setIsDialogOpen(true);
     }
@@ -102,7 +101,6 @@ const Ruangan: React.FC = () => {
       tanggalMulai: formData.tanggalMulai,
       tanggalSelesai: formData.tanggalSelesai,
       fotoKTM: formData.fotoKTM,
-      kritikSaran: formData.kritikSaran,
     });
 
     toast({
@@ -119,7 +117,6 @@ const Ruangan: React.FC = () => {
       tanggalMulai: '',
       tanggalSelesai: '',
       fotoKTM: '',
-      kritikSaran: '',
     });
     navigate('/dashboard');
   };
@@ -184,9 +181,9 @@ const Ruangan: React.FC = () => {
               <Card
                 key={ruangan.id}
                 className={`glass-card transition-all duration-300 animate-slide-up ${
-                  available && !ruangan.adminBlocked
+                  !ruangan.adminBlocked
                     ? 'cursor-pointer hover:shadow-card-hover hover:-translate-y-1'
-                    : 'opacity-60'
+                    : 'opacity-60 cursor-not-allowed'
                 }`}
                 style={{ animationDelay: `${index * 0.05}s` }}
                 onClick={() => handleRuanganClick(ruangan)}
@@ -314,23 +311,49 @@ const Ruangan: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="tanggalMulai">Tanggal Mulai</Label>
-                  <Input
-                    id="tanggalMulai"
-                    type="datetime-local"
-                    value={formData.tanggalMulai}
-                    onChange={(e) => setFormData({ ...formData, tanggalMulai: e.target.value })}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="tanggalMulai"
+                      type="datetime-local"
+                      value={formData.tanggalMulai}
+                      onChange={(e) => setFormData({ ...formData, tanggalMulai: e.target.value })}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-2 text-xs"
+                      onClick={() => {
+                        const now = new Date();
+                        const formatted = now.toISOString().slice(0, 16);
+                        setFormData({ ...formData, tanggalMulai: formatted });
+                      }}
+                    >
+                      Sekarang
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="tanggalSelesai">Tanggal Selesai</Label>
-                  <Input
-                    id="tanggalSelesai"
-                    type="datetime-local"
-                    value={formData.tanggalSelesai}
-                    onChange={(e) => setFormData({ ...formData, tanggalSelesai: e.target.value })}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="tanggalSelesai"
+                      type="datetime-local"
+                      value={formData.tanggalSelesai}
+                      onChange={(e) => setFormData({ ...formData, tanggalSelesai: e.target.value })}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-2 text-xs"
+                      onClick={() => setFormData({ ...formData, tanggalSelesai: '' })}
+                    >
+                      Hapus
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -353,18 +376,6 @@ const Ruangan: React.FC = () => {
                   value={formData.durasi}
                   onChange={(e) => setFormData({ ...formData, durasi: e.target.value })}
                   required
-                />
-              </div>
-
-              {/* Kritik dan Saran */}
-              <div className="space-y-2">
-                <Label htmlFor="kritikSaran">Kritik dan Saran (Opsional)</Label>
-                <Textarea
-                  id="kritikSaran"
-                  placeholder="Berikan kritik dan saran untuk layanan BAU..."
-                  value={formData.kritikSaran}
-                  onChange={(e) => setFormData({ ...formData, kritikSaran: e.target.value })}
-                  rows={2}
                 />
               </div>
 

@@ -278,15 +278,26 @@ export const PeminjamanProvider: React.FC<{ children: ReactNode }> = ({ children
     
     if (now > endDate) return null;
 
-    const diffMs = endDate.getTime() - now.getTime();
-    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-    const remainingHours = diffHours % 24;
+    // Add 10 minutes buffer for estimation
+    const bufferMs = 10 * 60 * 1000;
+    const diffMs = endDate.getTime() - now.getTime() + bufferMs;
+    
+    const totalMinutes = Math.ceil(diffMs / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const diffDays = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
 
     if (diffDays > 0) {
-      return `${diffDays} hari ${remainingHours} jam`;
+      if (remainingHours > 0) {
+        return `${diffDays} hari ${remainingHours} jam ${minutes} menit`;
+      }
+      return `${diffDays} hari ${minutes} menit`;
     }
-    return `${diffHours} jam`;
+    if (hours > 0) {
+      return `${hours} jam ${minutes} menit`;
+    }
+    return `${minutes} menit`;
   };
 
   const addFeedback = (feedback: Omit<Feedback, 'id' | 'createdAt'>) => {
